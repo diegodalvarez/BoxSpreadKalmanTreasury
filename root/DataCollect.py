@@ -17,6 +17,7 @@ class BoxSpreadData:
         self.tsy_tickers = ["TU", "TY", "UXY", "WN", "FV", "US"]
         self.tsy_path = r"C:\Users\Diego\Desktop\app_prod\BBGFuturesManager\data\PXFront"
         self.deliv_path = r"C:\Users\Diego\Desktop\app_prod\BBGFuturesManager\data\BondDeliverableRisk"
+        self.bbg_path = r"C:\Users\Diego\Desktop\app_prod\BBGData\data"
         
         self.parent_path = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
         self.data_path = os.path.join(self.parent_path, "data")
@@ -68,7 +69,7 @@ class BoxSpreadData:
         
         return df_out
         
-    def get_tsy_fut(self, verbose: bool = False): 
+    def get_tsy_fut(self, verbose: bool = False) -> pd.DataFrame: 
         
         file_path = os.path.join(self.data_path, "TSYFutures.parquet")
         
@@ -102,12 +103,37 @@ class BoxSpreadData:
             df_out.to_parquet(path = file_path, engine = "pyarrow")
             
         return df_out
+    
+    def get_tsy_liquidity(self, verbose: bool = False) -> pd.DataFrame: 
+        
+        file_path = os.path.join(self.data_path, "GVLQUSD.parquet")
+        
+        try:
+            
+            if verbose == True: print("Looking for Treasury Liquidity Data")
+            df_out = pd.read_parquet(path = file_path, engine = "pyarrow")
+            if verbose == True: print("Found Data\n")
+            
+        except:
+            
+            if verbose == True: print("Couldn't Find Treasury Liquidity Data, Collecting it")
+            bbg_path = os.path.join(self.bbg_path, "GVLQUSD.parquet")
+            df_out = (pd.read_parquet(
+                path = bbg_path, engine = "pyarrow").
+                drop(columns = ["variable"]).
+                assign(
+                    date     = lambda x: pd.to_datetime(x.date).dt.date,
+                    security = lambda x: x.security.str.split(" ").str[0]))
+            
+            df_out.to_parquet(path = file_path, engine = "pyarrow")
+        
+        return df_out
         
 def main():
     
     box_spread_data = BoxSpreadData()
     box_spread_data.get_box_spread(verbose = True)
     box_spread_data.get_tsy_fut(verbose = True)
+    box_spread_data.get_tsy_liquidity(verbose = True)
     
-#if __name__ == "__main__": main()
-    
+if __name__ == "__main__": main()
